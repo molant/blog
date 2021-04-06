@@ -13,14 +13,17 @@ require('dotenv-safe').config();
 
 const fs = require('fs').promises;
 const path = require('path');
+
 const globby = require('globby')
+
 const { Octokit } = require("@octokit/rest");
 const octokit = new Octokit({
   auth: process.env['GITHUB_TOKEN'],
 });
 
+const puppeteer = require('puppeteer');
 
-const POSTS_FOLDER = path.join(__dirname, '..', 'posts');
+const POSTS_FOLDER = path.posix.join(__dirname, '..', 'posts');
 const REPO_INFO = {
   owner: 'molant',
   repo: 'blog'
@@ -57,8 +60,9 @@ const parseFrontmatter = (content) =>{
  * It looks for them in the given `folder` and also looks at the
  * branches or PRs done.
  * @param {string} folder
+ * @param {{repo:string, owner:string}} repoInfo
  */
-const getCurrentPosts = async (folder) =>{
+const getCurrentBookmarkIds = async (folder, repoInfo) =>{
   const posts = await globby('*.md', {
     absolute: true,
     cwd: folder
@@ -72,12 +76,75 @@ const getCurrentPosts = async (folder) =>{
     ids.add(frontmatter.get('bookmarkId'));
   }
 
-  const pulls = await octokit.rest.pulls.list({
+  const pulls = (await octokit.rest.pulls.list({
     state: 'open',
     per_page: 100,
-    ...REPO_INFO
+    ...repoInfo
+  })).data;
+
+  for(const pull of pulls){
+    if(pull.author_association === 'OWNER' && pull.head.ref.startsWith('post/')) {
+      // `ref` should be `post/ID`
+      const id = pull.head.ref.split('/')[1];
+      ids.add(id);
+    }
+  }
+
+  return ids;
+};
+
+const getSecurityInfo = () => {
+
+  return new Promise(async (resolve) => {
+    const browser = await puppeteer.launch({
+      executablePath: 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
+      defaultViewport: {
+        width: 1024,
+        height: 768
+      },
+      headless: false,
+      // TODO: find a better way to not leakk information
+      userDataDir: 'C:\\Users\\antonmo\\AppData\\Local\\Microsoft\\Edge\\User Data'
+    });
+
+    const page = await browser.newPage();
+
+    page.on('response', (response) =>{
+      const responseHeaders = response.headers();
+      const requestHeaders = response.request().headers();
+      const cookies = page.cookies();
+
+      resolve({responseHeaders, requestHeaders, cookies});
+    });
+
+    await page.goto('https://twitter.com/i/bookmarks');
   });
+}
+
+
+const getBookmarks = async () =>{
+  // Navigate to twitter bookmarks, assume connected?
+  // Use the request headers to make another request to get everything
+
+  const info = await getSecurityInfo();
+
+  // Do request for bookmarks
+
+  // Get all threads
+
+  // Return
 };
 
 
-getCurrentPosts(POSTS_FOLDER);
+const start = async () =>{
+  console.log(`Getting BookmarkIds of published and pending posts`)
+  const ids = await getCurrentBookmarkIds(POSTS_FOLDER, REPO_INFO);
+  console.log(`Total posts: ${ids.size}`);
+
+  console.log(`Getting all bookmarks`)
+  await getBookmarks();
+
+  console.log(`Generating pending drafts`)
+}
+
+start();

@@ -1,0 +1,21 @@
+{
+  "title": "@molant's notes on things to think about",
+  "url": "https://example.com/",
+  "language": "en",
+  "description": "Sharing and writing about things I found that make me think.",
+  "feed": {
+    "subtitle": "Sharing and writing about things I found that make me think.",
+    "filename": "feed.xml",
+    "path": "/feed/feed.xml",
+    "id": "https://example.com/"
+  },
+  "jsonfeed": {
+    "path": "/feed/feed.json",
+    "url": "https://example.com/feed/feed.json"
+  },
+  "author": {
+    "name": "Antón Molleda",
+    "email": "no@email.thanks",
+    "url": "https://example.com/about-me/"
+  }
+}
